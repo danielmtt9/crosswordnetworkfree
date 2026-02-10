@@ -3,17 +3,12 @@ const { parse } = require('url');
 const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
-// Next's "hostname" is used for internal URL construction; keep it overridable.
-// Many hosts still expect the HTTP listener to bind to 0.0.0.0.
-const hostname = process.env.NEXT_HOSTNAME || 'localhost';
-
-// Most PaaS set PORT. If not set, default to 3000 (common reverse-proxy expectation).
-const port = parseInt(process.env.PORT || '3000', 10);
+const hostname = 'localhost';
+const port = parseInt(process.env.PORT || '3004', 10);
 // Bind to all interfaces by default so the dev server is reachable from LAN.
 // If your environment disallows this (EPERM/EACCES), we fall back to loopback.
 // Override via BIND_HOST=127.0.0.1 (or any other host) to force a specific bind.
-// Some hosts use HOST/IP instead of BIND_HOST.
-const bindHost = process.env.BIND_HOST || process.env.HOST || process.env.IP || '0.0.0.0';
+const bindHost = process.env.BIND_HOST || '0.0.0.0';
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
