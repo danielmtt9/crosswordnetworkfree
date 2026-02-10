@@ -5,7 +5,8 @@ generator client {
 datasource db {
   provider          = "mysql"
   url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  // Only needed for `prisma migrate dev`. For production deploys we use
+  // `prisma migrate deploy` which does not require a shadow database.
 }
 
 model User {

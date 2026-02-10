@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
-    "build:hostinger": "npm test && npm run build && npm prune --omit=dev && rm -rf .next/cache",
+    "db:deploy": "npx prisma generate && npx prisma migrate deploy",
+    "build:hostinger": "npm run db:deploy && npm run build",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint",
     "test": "jest",
