@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "next build",
-    "db:deploy": "npx prisma generate && npx prisma migrate deploy",
-    "build:hostinger": "npm run db:deploy && npm run build",
+    "db:deploy": "node scripts/db_deploy_on_build.mjs",
+    "build": "npm run db:deploy && next build",
+    "build:hostinger": "npm run build",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint",
     "test": "jest",
