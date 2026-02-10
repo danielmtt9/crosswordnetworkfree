@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
+    "build:hostinger": "npm test && npm run build && npm prune --omit=dev && rm -rf .next/cache",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint",
     "test": "jest",

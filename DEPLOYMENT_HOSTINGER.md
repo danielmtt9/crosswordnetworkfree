@@ -33,10 +33,14 @@ Set environment variables in Hostinger’s dashboard (recommended) rather than c
 | `RESEND_API_KEY` | API key from Resend |
 | `EMAIL_FROM` | Official sender, e.g., `Crossword Network <noreply@crossword.network>` |
 | `NEXT_PUBLIC_APP_URL` | Public URL for client features, e.g., `https://crossword.network` |
+| `NEXT_TELEMETRY_DISABLED` | Disable Next.js telemetry (recommended): `1` |
 
 Also required for Google sign-in:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+
+Optional (if server RAM is tight):
+- `NODE_OPTIONS=--max-old-space-size=512` (tune to your plan)
 
 Recommended runtime bind:
 - `BIND_HOST=127.0.0.1`
@@ -87,7 +91,7 @@ You can deploy via Git, ZIP upload, or FTP. Using Git is recommended:
 
 1. In Hostinger Node.js App manager, connect your GitHub repo.
 2. Set **Application root** to: `~/domains/crossword.network/nodeapp`
-3. Configure the **Build Command**: `npm ci && npm test && npm run build`
+3. Configure the **Build Command** (optimized): `npm ci && npm run build:hostinger`
 4. Configure the **Start Command**: `npm run start`
 
 Hostinger will install packages, run the build, and start the Node process with `node server.js`.

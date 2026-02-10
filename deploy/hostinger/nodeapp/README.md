@@ -13,14 +13,15 @@ The Node.js app should run from `nodeapp` and the domain should be mapped/proxie
 
 - **Application root**: `~/domains/crossword.network/nodeapp`
 - **Node version**: 18+ (20 is fine)
-- **Build command**:
-  - `npm ci && npm test && npm run build`
+- **Build command** (optimized):
+  - `npm ci && npm run build:hostinger`
 - **Start command**:
   - `npm run start`
 
-If `npm test` is too slow for Hostinger builds, use:
-- `npm ci && npm run build`
-and run tests in GitHub Actions before deploy.
+Notes:
+- `build:hostinger` runs `npm test`, `next build`, then prunes dev deps and deletes `.next/cache` to reduce disk usage.
+- If Hostinger build CPU is tight, you can switch build to: `npm ci && npm run build && npm prune --omit=dev && rm -rf .next/cache`
+  - and run `npm test` in CI before deploy.
 
 ## Required Environment Variables (Production)
 
@@ -29,6 +30,8 @@ Set these in Hostinger hPanel → Node.js App → Environment Variables.
 ### Core
 - `NODE_ENV=production`
 - `NEXT_PUBLIC_APP_URL=https://crossword.network`
+- `NEXT_TELEMETRY_DISABLED=1`
+- Optional (if RAM is tight): `NODE_OPTIONS=--max-old-space-size=512`
 
 ### Auth (NextAuth)
 - `NEXTAUTH_URL=https://crossword.network`
@@ -73,4 +76,3 @@ Expected output includes:
 - tables exist: `puzzles`, `user_progress`, `hint_usage_events`
 - at least 1 puzzle exists
 - hint usage event insert/delete works
-
