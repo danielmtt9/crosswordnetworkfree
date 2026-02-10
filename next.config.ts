@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  productionBrowserSourceMaps: false,
   compiler: {
     // Remove any babel config conflicts
     removeConsole: process.env.NODE_ENV === 'production',

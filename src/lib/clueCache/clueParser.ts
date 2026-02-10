@@ -5,6 +5,8 @@
  */
 
 import fs from 'fs/promises';
+import 'server-only';
+
 import { JSDOM } from 'jsdom';
 
 export interface ParsedClue {

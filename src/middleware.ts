@@ -1,25 +1,41 @@
-import { auth } from '@/auth';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export default auth((req) => {
-  const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
+// Keep middleware lightweight: do not import full NextAuth config/Prisma here.
+// Middleware only checks for the presence of a valid session token.
+export async function middleware(req: NextRequest) {
+  let token: unknown = null;
+  try {
+    token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+  } catch {
+    token = null;
+  }
 
-  const isApiAuthRoute = nextUrl.pathname.startsWith('/api/auth');
-  const isPublicRoute = ['/', '/waitlist', '/signin', '/signup'].includes(nextUrl.pathname);
-
-  if (isApiAuthRoute || isPublicRoute) {
+  if (token) {
     return NextResponse.next();
   }
 
-  if (!isLoggedIn && !isPublicRoute) {
-    return NextResponse.redirect(new URL('/signin', nextUrl));
-  }
-  
-  return NextResponse.next();
-});
+  const signInUrl = req.nextUrl.clone();
+  signInUrl.pathname = '/signin';
+  signInUrl.searchParams.set(
+    'callbackUrl',
+    `${req.nextUrl.pathname}${req.nextUrl.search}`,
+  );
+  return NextResponse.redirect(signInUrl);
+}
 
 export const config = {
-  // Allow static assets through without auth so puzzle iframes can load bridge scripts.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|scripts|puzzles).*)'],
+  // Only protect authenticated areas. Everything else is public (including /puzzles/* and legal pages).
+  matcher: [
+    '/admin/:path*',
+    '/dashboard/:path*',
+    '/settings/:path*',
+    '/profile/:path*',
+    '/achievements/:path*',
+    '/force-password-change/:path*',
+  ],
 };

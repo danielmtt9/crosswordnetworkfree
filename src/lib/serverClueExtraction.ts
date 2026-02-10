@@ -3,6 +3,8 @@
  * Uses JSDOM for DOM parsing on the server
  */
 
+import 'server-only';
+
 import { JSDOM } from 'jsdom';
 
 export interface Clue {
