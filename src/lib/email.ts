@@ -3,8 +3,19 @@ import { EmailTemplate, emailTemplateManager } from './emailTemplates';
 import { EmailAnalytics } from './emailAnalytics';
 import { EmailSecurity } from './emailSecurity';
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+function getResendClient(): Resend {
+  // Avoid throwing during build-time module evaluation. Only require the key at runtime
+  // when we actually attempt to send an email.
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    throw new Error('Missing API key. Pass it to the constructor `new Resend("re_123")`');
+  }
+  if (!resendClient) {
+    resendClient = new Resend(key);
+  }
+  return resendClient;
+}
 const DEFAULT_FROM_ADDRESS =
   process.env.EMAIL_FROM?.trim() || 'Crossword Network <noreply@crossword.network>';
 
@@ -114,6 +125,7 @@ export class EmailService {
     tags?: Record<string, string>;
   }): Promise<EmailResult> {
     let lastError: Error | null = null;
+    const resend = getResendClient();
 
     for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
       try {
