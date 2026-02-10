@@ -6,7 +6,31 @@ import { getToken } from 'next-auth/jwt';
 // Middleware only checks for the presence of a valid session token.
 export async function middleware(req: NextRequest) {
   const isApiAuthRoute = req.nextUrl.pathname.startsWith('/api/auth');
-  const isPublicRoute = ['/', '/waitlist', '/signin', '/signup'].includes(req.nextUrl.pathname);
+  const pathname = req.nextUrl.pathname;
+
+  // Public pages that must always be readable without a session.
+  // Keep this list explicit to avoid accidentally exposing private areas.
+  const isPublicRoute =
+    [
+      '/',
+      '/waitlist',
+      '/signin',
+      '/signup',
+      '/forgot-password',
+      '/reset-password',
+      '/verify-email',
+      '/force-password-change',
+      '/unauthorized',
+      // Support + legal
+      '/help',
+      '/faq',
+      '/contact',
+      '/cookies',
+      '/privacy',
+      '/terms',
+    ].includes(pathname) ||
+    // Namespaced legal routes
+    pathname.startsWith('/legal/');
   if (isApiAuthRoute || isPublicRoute) {
     return NextResponse.next();
   }
