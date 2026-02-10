@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EmailSecurity } from "@/lib/emailSecurity";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 
 const emailSecurity = new EmailSecurity();
 
