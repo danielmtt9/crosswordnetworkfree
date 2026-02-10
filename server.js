@@ -2,9 +2,12 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 
-const dev = process.env.NODE_ENV !== 'production';
+// Default to production mode unless explicitly set to development.
+// On shared hosts, accidentally running dev mode can spike CPU/RAM and cause 503s.
+const dev = process.env.NODE_ENV === 'development';
 const hostname = 'localhost';
-const port = parseInt(process.env.PORT || '3004', 10);
+// Match Hostinger/Passenger defaults and our proxy.php expectations.
+const port = parseInt(process.env.PORT || '3000', 10);
 // Bind to all interfaces by default so the dev server is reachable from LAN.
 // If your environment disallows this (EPERM/EACCES), we fall back to loopback.
 // Override via BIND_HOST=127.0.0.1 (or any other host) to force a specific bind.
@@ -12,6 +15,14 @@ const bindHost = process.env.BIND_HOST || '0.0.0.0';
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
+
+console.log('[server] boot', {
+  node: process.version,
+  nodeEnv: process.env.NODE_ENV,
+  dev,
+  port,
+  bindHost,
+});
 
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION:', err);

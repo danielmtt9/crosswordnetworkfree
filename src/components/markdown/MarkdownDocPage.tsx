@@ -6,6 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Calendar, FileText } from 'lucide-react';
 
+type CachedDoc = {
+  mtimeMs: number;
+  size: number;
+  html: string;
+};
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __markdownDocCache: Map<string, CachedDoc> | undefined;
+}
+
+const docCache: Map<string, CachedDoc> =
+  globalThis.__markdownDocCache || (globalThis.__markdownDocCache = new Map());
+
 type NavItem = {
   href: string;
   label: string;
@@ -22,9 +36,32 @@ export type MarkdownDocPageProps = {
 };
 
 export function MarkdownDocPage(props: MarkdownDocPageProps) {
-  const markdownPath = path.join(process.cwd(), props.markdownRelativePath);
-  const markdownContent = fs.readFileSync(markdownPath, 'utf8');
-  const htmlContent = marked(markdownContent);
+  const markdownPath = path.resolve(process.cwd(), props.markdownRelativePath);
+
+  let htmlContent = '';
+  let errorMessage: string | null = null;
+
+  try {
+    const stat = fs.statSync(markdownPath);
+    const cached = docCache.get(markdownPath);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      htmlContent = cached.html;
+    } else {
+      const markdownContent = fs.readFileSync(markdownPath, 'utf8');
+      htmlContent = marked(markdownContent);
+      docCache.set(markdownPath, {
+        mtimeMs: stat.mtimeMs,
+        size: stat.size,
+        html: htmlContent,
+      });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    errorMessage = `Failed to load document: ${props.markdownRelativePath} (${msg})`;
+    htmlContent = marked(
+      `## Document unavailable\n\nWe could not load this page right now.\n\nIf you are the site owner, check that the file exists on the server: \`${props.markdownRelativePath}\`.`,
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,6 +104,11 @@ export function MarkdownDocPage(props: MarkdownDocPageProps) {
 
           <Card>
             <CardContent className="prose prose-gray dark:prose-invert max-w-none">
+              {errorMessage && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 not-prose">
+                  {errorMessage}
+                </div>
+              )}
               <div className="markdown-content" dangerouslySetInnerHTML={{ __html: htmlContent }} />
             </CardContent>
           </Card>
@@ -89,4 +131,3 @@ export function MarkdownDocPage(props: MarkdownDocPageProps) {
     </div>
   );
 }
-
