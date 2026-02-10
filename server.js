@@ -2,10 +2,7 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 
-// Default to production mode unless explicitly in development.
-// Some shared hosts start the file directly without setting NODE_ENV, which would
-// otherwise put Next into dev mode and can exhaust resources.
-const dev = process.env.NODE_ENV === 'development';
+const dev = process.env.NODE_ENV !== 'production';
 // Next's "hostname" is used for internal URL construction; keep it overridable.
 // Many hosts still expect the HTTP listener to bind to 0.0.0.0.
 const hostname = process.env.NEXT_HOSTNAME || 'localhost';
@@ -27,16 +24,6 @@ const bindHost = process.env.BIND_HOST || process.env.HOST || process.env.IP || 
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
-
-console.log('[startup]', {
-  node: process.version,
-  pid: process.pid,
-  nodeEnv: process.env.NODE_ENV || '(unset)',
-  dev,
-  port,
-  bindHost,
-  cwd: process.cwd(),
-});
 
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION:', err);
