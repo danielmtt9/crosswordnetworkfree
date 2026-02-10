@@ -7,8 +7,15 @@ const dev = process.env.NODE_ENV !== 'production';
 // Many hosts still expect the HTTP listener to bind to 0.0.0.0.
 const hostname = process.env.NEXT_HOSTNAME || 'localhost';
 
-// Most PaaS set PORT. If not set, default to 3000 (common reverse-proxy expectation).
-const port = parseInt(process.env.PORT || '3000', 10);
+// Most PaaS set PORT. Some panels use different names; fall back to 3000.
+const port = parseInt(
+  process.env.PORT ||
+    process.env.NODE_PORT ||
+    process.env.APP_PORT ||
+    process.env.APPLICATION_PORT ||
+    '3000',
+  10,
+);
 // Bind to all interfaces by default so the dev server is reachable from LAN.
 // If your environment disallows this (EPERM/EACCES), we fall back to loopback.
 // Override via BIND_HOST=127.0.0.1 (or any other host) to force a specific bind.
