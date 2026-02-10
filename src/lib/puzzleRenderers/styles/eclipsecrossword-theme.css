@@ -1,0 +1,549 @@
+/* EclipseCrossword Custom Theme - Crossword Network Integration */
+
+/* ===== CSS Variables for Theme Compatibility ===== */
+:root {
+  /* Light mode colors (derived from site tokens when available) */
+  --ecw-background: var(--cw-surface, #F6F7F5);
+  --ecw-foreground: var(--cw-text, #0E1512);
+  --ecw-card: var(--cw-card, #FFFFFF);
+  --ecw-card-foreground: var(--cw-text, #0E1512);
+  --ecw-border: var(--cw-border, #E5E8E2);
+  --ecw-primary: var(--cw-accent, #d97706);
+  --ecw-primary-foreground: #fffbeb;
+  --ecw-secondary: color-mix(in srgb, var(--ecw-card) 88%, var(--ecw-border) 12%);
+  --ecw-secondary-foreground: var(--ecw-foreground);
+  --ecw-accent: var(--cw-highlight-across, rgba(217, 119, 6, 0.18));
+  --ecw-accent-foreground: var(--ecw-foreground);
+  --ecw-muted: var(--cw-muted, #EEF1ED);
+  --ecw-muted-foreground: var(--cw-muted-foreground, #5F6E66);
+  --ecw-destructive: #B42318;
+  --ecw-destructive-foreground: #fff;
+  --ecw-success: var(--ecw-primary);
+  --ecw-success-foreground: var(--ecw-primary-foreground);
+  --ecw-warning: #F59E0B;
+  --ecw-warning-foreground: var(--ecw-foreground);
+
+  /* Readability tuning: separate surface vs grid vs cell tokens */
+  --ecw-surface: var(--cw-surface, #F6F7F5);
+  --ecw-grid-surface: color-mix(in srgb, var(--cw-card, #FFFFFF) 92%, var(--cw-border, #E5E8E2) 8%);
+  --ecw-cell-bg: color-mix(in srgb, var(--cw-card, #FFFFFF) 96%, var(--cw-surface, #F6F7F5) 4%);
+  --ecw-cell-fg: var(--cw-text, #0E1512);
+  --ecw-cell-border: color-mix(in srgb, var(--cw-border, #E5E8E2) 70%, var(--cw-text, #0E1512) 30%);
+  
+  /* Typography */
+  --ecw-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --ecw-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  
+  /* Spacing and sizing */
+  --ecw-border-radius: 0.5rem;
+  --ecw-border-radius-lg: 0.75rem;
+  --ecw-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --ecw-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --ecw-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Dynamic cell sizing - will be overridden by JavaScript */
+  --ecw-cell-size: 32px;
+  --ecw-cell-font-size: 18px;
+  --ecw-grid-gap: 1px;
+}
+
+/* Dark mode colors */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ecw-background: var(--cw-surface, #0B0F0D);
+    --ecw-foreground: var(--cw-text, #E6ECE8);
+    --ecw-card: var(--cw-card, #10161C);
+    --ecw-card-foreground: var(--cw-text, #E6ECE8);
+    --ecw-border: var(--cw-border, #1A211D);
+    --ecw-primary: var(--cw-accent, #d97706);
+    --ecw-primary-foreground: #fffbeb;
+    --ecw-secondary: color-mix(in srgb, var(--ecw-card) 90%, var(--ecw-border) 10%);
+    --ecw-secondary-foreground: var(--ecw-foreground);
+    --ecw-accent: var(--cw-highlight-across, rgba(217, 119, 6, 0.25));
+    --ecw-accent-foreground: var(--ecw-foreground);
+    --ecw-muted: var(--cw-muted, #111A14);
+    --ecw-muted-foreground: var(--cw-muted-foreground, #9DB0A8);
+    --ecw-destructive: #F97066;
+    --ecw-destructive-foreground: #0B0F0D;
+    --ecw-success: var(--ecw-primary);
+    --ecw-success-foreground: var(--ecw-primary-foreground);
+    --ecw-warning: #F59E0B;
+    --ecw-warning-foreground: var(--ecw-foreground);
+
+    /* Dark-mode readability lift (still subtle) */
+    --ecw-surface: var(--cw-surface, #0B0F0D);
+    --ecw-grid-surface: color-mix(in srgb, var(--cw-card, #10161C) 88%, var(--cw-border, #1A211D) 12%);
+    --ecw-cell-bg: color-mix(in srgb, var(--cw-card, #10161C) 88%, white 12%);
+    --ecw-cell-fg: var(--cw-text, #E6ECE8);
+    --ecw-cell-border: color-mix(in srgb, var(--cw-border, #1A211D) 55%, white 45%);
+  }
+}
+
+/* ===== Base Styling Overrides ===== */
+
+/* Body and typography */
+body {
+  font-family: var(--ecw-font-family) !important;
+  background-color: var(--ecw-surface) !important;
+  color: var(--ecw-foreground) !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* Ensure HTML element doesn't clip */
+html {
+  overflow: visible !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--ecw-foreground) !important;
+  font-weight: 600 !important;
+  margin: 0 0 0.5rem 0 !important;
+}
+
+/* ===== Crossword Container ===== */
+.ecw-crosswordarea {
+  /* Subtle surface so the grid feels native (not a "page inside page"). */
+  background-color: var(--ecw-grid-surface) !important;
+  border: 0 !important;
+  border-radius: var(--ecw-border-radius-lg) !important;
+  padding: 0.75rem !important;
+  font-family: var(--ecw-font-family) !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+  overflow: visible !important;
+  width: fit-content !important;
+  margin: 0 auto !important;
+}
+
+/* Make crossword table responsive */
+#crossword {
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  border-collapse: separate !important;
+  border-spacing: var(--ecw-grid-gap) !important;
+  padding: 8px !important;
+  background: transparent !important;
+  border-radius: calc(var(--ecw-border-radius-lg) - 2px) !important;
+}
+
+/* Table cell defaults: keep cells perfectly square and centered. */
+#crossword td {
+  padding: 0 !important;
+  vertical-align: middle !important;
+}
+
+.ecw-crosswordarea:hover {
+  box-shadow: none !important;
+}
+
+/* ===== Grid Cells ===== */
+.ecw-box {
+  border: 1px solid var(--ecw-cell-border) !important;
+  background-color: var(--ecw-cell-bg) !important;
+  color: var(--ecw-cell-fg) !important;
+  font-family: var(--ecw-font-mono) !important;
+  font-size: var(--ecw-cell-font-size) !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  text-align: center !important;
+  min-height: var(--ecw-cell-size) !important;
+  min-width: var(--ecw-cell-size) !important;
+  height: var(--ecw-cell-size) !important;
+  width: var(--ecw-cell-size) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  border-radius: 2px !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  /* Keep table semantics (this is a <td>). Using flex here can distort the grid. */
+}
+
+/* Normal state - unselected */
+.ecw-boxnormal_unsel {
+  background-color: var(--ecw-cell-bg) !important;
+  border-color: var(--ecw-cell-border) !important;
+  color: var(--ecw-cell-fg) !important;
+}
+
+.ecw-boxnormal_unsel:hover {
+  background-color: var(--ecw-accent) !important;
+  border-color: var(--ecw-primary) !important;
+}
+
+/* Normal state - selected */
+.ecw-boxnormal_sel {
+  background-color: var(--ecw-accent) !important;
+  border-color: var(--ecw-primary) !important;
+  color: var(--ecw-cell-fg) !important;
+  /* Premium amber glow: crisp edge + soft halo */
+  box-shadow:
+    0 0 0 2px var(--cw-focus-ring, var(--ecw-primary)),
+    0 0 0 6px color-mix(in srgb, var(--cw-focus-ring, var(--ecw-primary)) 20%, transparent) !important;
+}
+
+/* Error state - unselected */
+.ecw-boxerror_unsel {
+  background-color: hsl(0 84.2% 60.2% / 0.1) !important;
+  border-color: var(--ecw-destructive) !important;
+  color: var(--ecw-destructive) !important;
+}
+
+/* Error state - selected */
+.ecw-boxerror_sel {
+  background-color: hsl(0 84.2% 60.2% / 0.2) !important;
+  border-color: var(--ecw-destructive) !important;
+  color: var(--ecw-destructive) !important;
+  box-shadow: 0 0 0 2px var(--ecw-destructive) !important;
+}
+
+/* Cheated state - unselected */
+.ecw-boxcheated_unsel {
+  background-color: var(--ecw-warning-foreground) !important;
+  border-color: var(--ecw-warning) !important;
+  color: var(--ecw-warning) !important;
+}
+
+/* Cheated state - selected */
+.ecw-boxcheated_sel {
+  background-color: var(--ecw-warning-foreground) !important;
+  border-color: var(--ecw-warning) !important;
+  color: var(--ecw-warning) !important;
+  box-shadow: 0 0 0 2px var(--ecw-warning) !important;
+}
+
+/* ===== Answer Box and Clues ===== */
+.ecw-answerbox {
+  background-color: var(--ecw-card) !important;
+  border: 1px solid var(--ecw-border) !important;
+  border-radius: var(--ecw-border-radius-lg) !important;
+  padding: 1rem !important;
+  box-shadow: var(--ecw-shadow-md) !important;
+  color: var(--ecw-card-foreground) !important;
+  font-family: var(--ecw-font-family) !important;
+  width: 280px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ecw-answerbox:hover {
+  box-shadow: var(--ecw-shadow-lg) !important;
+}
+
+.ecw-cluebox {
+  border-top: 1px solid var(--ecw-border) !important;
+  border-bottom: 1px solid var(--ecw-border) !important;
+  border-left: none !important;
+  border-right: none !important;
+  margin-top: 1rem !important;
+  padding: 0.5rem 0 !important;
+  color: var(--ecw-foreground) !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.ecw-wordlabel {
+  text-transform: uppercase !important;
+  margin: 0 !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  color: var(--ecw-primary) !important;
+  letter-spacing: 0.05em !important;
+}
+
+.ecw-wordinfo {
+  font-size: 12px !important;
+  color: var(--ecw-muted-foreground) !important;
+  margin: 0.25rem 0 !important;
+}
+
+.ecw-worderror {
+  color: var(--ecw-destructive) !important;
+  font-weight: 600 !important;
+  display: none !important;
+  margin-top: 1rem !important;
+  padding: 0.5rem !important;
+  background-color: hsl(0 84.2% 60.2% / 0.1) !important;
+  border-radius: var(--ecw-border-radius) !important;
+  border: 1px solid var(--ecw-destructive) !important;
+}
+
+/* ===== Input Field ===== */
+.ecw-input {
+  font-family: var(--ecw-font-family) !important;
+  background-color: var(--ecw-background) !important;
+  border: 1px solid var(--ecw-border) !important;
+  border-radius: var(--ecw-border-radius) !important;
+  color: var(--ecw-foreground) !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  transition: all 0.15s ease !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ecw-input:focus {
+  outline: none !important;
+  border-color: var(--ecw-primary) !important;
+  box-shadow: 0 0 0 2px hsl(32 95% 44% / 0.2) !important;
+}
+
+.ecw-input::placeholder {
+  color: var(--ecw-muted-foreground) !important;
+  text-transform: none !important;
+  font-weight: 400 !important;
+}
+
+/* ===== Buttons ===== */
+.ecw-button {
+  background-color: var(--ecw-primary) !important;
+  color: var(--ecw-primary-foreground) !important;
+  border: 1px solid var(--ecw-primary) !important;
+  border-radius: var(--ecw-border-radius) !important;
+  padding: 0.5rem 1rem !important;
+  font-family: var(--ecw-font-family) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  width: 64pt !important;
+  min-width: 80px !important;
+  text-align: center !important;
+}
+
+.ecw-button:hover {
+  background-color: hsl(32 95% 44% / 0.9) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--ecw-shadow) !important;
+}
+
+.ecw-button:active {
+  transform: translateY(0) !important;
+  box-shadow: none !important;
+}
+
+.ecw-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* ===== Copyright ===== */
+.ecw-copyright {
+  margin-bottom: 1rem !important;
+  font-size: 11px !important;
+  font-family: var(--ecw-font-family) !important;
+  color: var(--ecw-muted-foreground) !important;
+}
+
+.ecw-copyright a {
+  color: var(--ecw-primary) !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+}
+
+.ecw-copyright a:hover {
+  text-decoration: underline !important;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+  .ecw-answerbox {
+    width: 100% !important;
+    max-width: 320px !important;
+  }
+  
+  .ecw-crosswordarea {
+    padding: 0.75rem !important;
+  }
+  
+  .ecw-button {
+    width: auto !important;
+    min-width: 70px !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 13px !important;
+  }
+}
+
+/* ===== Animation Enhancements ===== */
+@keyframes ecw-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ecw-answerbox {
+  animation: ecw-fadeIn 0.3s ease-out !important;
+}
+
+.ecw-box {
+  animation: ecw-fadeIn 0.2s ease-out !important;
+}
+
+/* ===== Focus States for Accessibility ===== */
+.ecw-box:focus-visible {
+  outline: 2px solid var(--ecw-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.ecw-button:focus-visible {
+  outline: 2px solid var(--ecw-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.ecw-input:focus-visible {
+  outline: 2px solid var(--ecw-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ===== Letter Validation Animations ===== */
+@keyframes pulse-correct {
+  0%, 100% { 
+    background-color: transparent; 
+    border-color: var(--ecw-border);
+  }
+  50% { 
+    background-color: hsl(32 95% 44% / 0.2); 
+    border-color: var(--ecw-primary);
+    box-shadow: 0 0 8px hsl(32 95% 44% / 0.4);
+  }
+}
+
+@keyframes shake-incorrect {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+@keyframes glow-border {
+  0%, 100% { border-color: var(--ecw-border); }
+  50% { border-color: rgb(239, 68, 68); }
+}
+
+/* Correct letter animation */
+.ecw-letter-correct {
+  animation: pulse-correct 0.6s ease-in-out;
+}
+
+/* Incorrect letter animation */
+.ecw-letter-incorrect {
+  animation: shake-incorrect 0.4s ease-in-out, glow-border 0.4s ease-in-out;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Struggling indicator (3+ errors) */
+.ecw-cell-struggling {
+  border-left: 3px solid rgb(251, 191, 36) !important;
+}
+
+/* ===== Animation Utility Classes ===== */
+
+/* Fade in animation utility */
+.ecw-animate-fadeIn {
+  animation: ecw-fadeIn 0.3s ease-out;
+}
+
+/* Correct letter animation utility */
+.ecw-animate-correct {
+  animation: pulse-correct 0.6s ease-in-out;
+}
+
+/* Incorrect letter animation utility */
+.ecw-animate-incorrect {
+  animation: shake-incorrect 0.4s ease-in-out, glow-border 0.4s ease-in-out;
+}
+
+/* Cell glow animation for active cells */
+@keyframes cell-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--ecw-primary); }
+  50% { box-shadow: 0 0 8px 2px var(--ecw-primary); }
+}
+
+.ecw-animate-glow {
+  animation: cell-glow 1s ease-in-out infinite;
+}
+
+/* Completion celebration */
+@keyframes celebrate {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.05) rotate(2deg); }
+  75% { transform: scale(1.05) rotate(-2deg); }
+}
+
+.ecw-animate-celebrate {
+  animation: celebrate 0.5s ease-in-out;
+}
+
+/* Hint reveal animation */
+@keyframes hint-reveal {
+  0% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+  50% {
+    background-color: hsl(32 95% 44% / 0.3);
+    transform: scale(1.1);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+.ecw-animate-hint {
+  animation: hint-reveal 0.8s ease-in-out;
+}
+
+/* Disable all animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ecw-animate-fadeIn,
+  .ecw-animate-correct,
+  .ecw-animate-incorrect,
+  .ecw-animate-glow,
+  .ecw-animate-celebrate,
+  .ecw-animate-hint,
+  .ecw-letter-correct,
+  .ecw-letter-incorrect {
+    animation: none !important;
+  }
+  
+  /* For reduced motion, use simple state changes instead */
+  .ecw-animate-correct {
+    background-color: hsl(32 95% 44% / 0.15) !important;
+    transition: background-color 0.2s ease;
+  }
+  
+  .ecw-animate-incorrect {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    transition: background-color 0.2s ease;
+  }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+  .ecw-crosswordarea {
+    box-shadow: none !important;
+    border: 2px solid #000 !important;
+  }
+  
+  .ecw-answerbox {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+  
+  .ecw-box {
+    border: 1px solid #000 !important;
+  }
+}
