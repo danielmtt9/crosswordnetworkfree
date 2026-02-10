@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
-    "postinstall": "next build",
+    "postinstall": "if [ -z \"$SKIP_POSTINSTALL_BUILD\" ]; then next build; else echo \"[postinstall] SKIP_POSTINSTALL_BUILD=1: skipping next build\"; fi",
     "build:hostinger": "npm test && npm run build && npm prune --omit=dev && rm -rf .next/cache",
     "start": "NODE_ENV=production node app.js",
     "lint": "eslint",
