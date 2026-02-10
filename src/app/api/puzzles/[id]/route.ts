@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseCluesFromStorage } from "@/lib/serverClueExtraction";
+import { cacheKeyFromRequest, withTtlCache } from "@/lib/serverTtlCache";
 
 export async function GET(
   request: NextRequest,
@@ -26,48 +27,58 @@ export async function GET(
       );
     }
 
-    const puzzle = await prisma.puzzle.findUnique({
-      where: {
-        id: puzzleId,
-        is_active: true,
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        difficulty: true,
-        category: true,
-        tags: true,
-        play_count: true,
-        completion_rate: true,
-        estimated_solve_time: true,
-        avg_solve_time: true,
-        best_score: true,
-        grid_width: true,
-        grid_height: true,
-        upload_date: true,
-        file_path: true,
-        filename: true,
-        clues: true,
-      },
+    const TTL_MS = 5 * 60 * 1000;
+    const key = cacheKeyFromRequest(request);
+
+    const { value } = await withTtlCache(key, TTL_MS, async () => {
+      const puzzle = await prisma.puzzle.findUnique({
+        where: {
+          id: puzzleId,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          difficulty: true,
+          category: true,
+          tags: true,
+          play_count: true,
+          completion_rate: true,
+          estimated_solve_time: true,
+          avg_solve_time: true,
+          best_score: true,
+          grid_width: true,
+          grid_height: true,
+          upload_date: true,
+          file_path: true,
+          filename: true,
+          clues: true,
+        },
+      });
+
+      if (!puzzle) {
+        return null;
+      }
+
+      // Convert Decimal types to numbers and parse clues
+      return {
+        ...puzzle,
+        completion_rate: puzzle.completion_rate ? Number(puzzle.completion_rate) : null,
+        avg_solve_time: puzzle.avg_solve_time ? Number(puzzle.avg_solve_time) : null,
+        clues: puzzle.clues ? parseCluesFromStorage(puzzle.clues) : { across: [], down: [] },
+      };
     });
 
-    if (!puzzle) {
-      return NextResponse.json(
-        { error: "Puzzle not found" },
-        { status: 404 }
-      );
+    if (!value) {
+      return NextResponse.json({ error: "Puzzle not found" }, { status: 404 });
     }
 
-    // Convert Decimal types to numbers and parse clues
-    const normalizedPuzzle = {
-      ...puzzle,
-      completion_rate: puzzle.completion_rate ? Number(puzzle.completion_rate) : null,
-      avg_solve_time: puzzle.avg_solve_time ? Number(puzzle.avg_solve_time) : null,
-      clues: puzzle.clues ? parseCluesFromStorage(puzzle.clues) : { across: [], down: [] },
-    };
-
-    return NextResponse.json(normalizedPuzzle);
+    return NextResponse.json(value, {
+      headers: {
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+      },
+    });
   } catch (error) {
     // Type-safe error logging with proper error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

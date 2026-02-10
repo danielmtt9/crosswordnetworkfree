@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "../components/session-provider";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { cookies } from "next/headers";
 import { CookieBanner } from "@/components/cookies/CookieBanner";
 import { ThemeCookieSync } from "@/components/cookies/ThemeCookieSync";
 
@@ -52,16 +51,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = cookies();
-  const themeCookie = cookieStore.get("cw_theme")?.value;
-  const htmlClassName = themeCookie === "dark" ? "dark" : undefined;
-
   return (
-    <html lang="en" suppressHydrationWarning className={htmlClassName}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="canonical" href="https://crossword.network" />
+        {/* Apply theme class early without making the whole app dynamic. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function() {
+  try {
+    var m = document.cookie.match(/(?:^|; )cw_theme=([^;]+)/);
+    var theme = m ? decodeURIComponent(m[1]) : '';
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  } catch (e) {}
+})();`.trim(),
+          }}
+        />
       </head>
       <body suppressHydrationWarning className={`${inter.variable} font-sans antialiased`}>
         <SessionProvider>

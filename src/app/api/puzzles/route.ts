@@ -1,96 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cacheKeyFromRequest, withTtlCache } from "@/lib/serverTtlCache";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
-    const difficulty = searchParams.get("difficulty");
-    const tags = searchParams.get("tags")?.split(',') || [];
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "12");
-    const search = searchParams.get("search");
+    const TTL_MS = 5 * 60 * 1000;
+    const key = cacheKeyFromRequest(request);
 
-    // Build where clause
-    const where: any = {
-      is_active: true,
-    };
+    const { value } = await withTtlCache(key, TTL_MS, async () => {
+      const { searchParams } = new URL(request.url);
+      const category = searchParams.get("category");
+      const difficulty = searchParams.get("difficulty");
+      const tags = searchParams.get("tags")?.split(',') || [];
+      const page = parseInt(searchParams.get("page") || "1");
+      const limit = parseInt(searchParams.get("limit") || "12");
+      const search = searchParams.get("search");
 
-    if (category && category !== "all") {
-      where.category = category;
-    }
+      // Build where clause
+      const where: any = {
+        is_active: true,
+      };
 
-    if (difficulty && difficulty !== "all") {
-      where.difficulty = difficulty;
-    }
+      if (category && category !== "all") {
+        where.category = category;
+      }
 
-    // Filter by tags if provided
-    if (tags.length > 0 && tags[0] !== '') {
-      where.AND = tags.map(tag => ({
-        tags: {
-          contains: tag
-        }
+      if (difficulty && difficulty !== "all") {
+        where.difficulty = difficulty;
+      }
+
+      // Filter by tags if provided
+      if (tags.length > 0 && tags[0] !== '') {
+        where.AND = tags.map(tag => ({
+          tags: {
+            contains: tag
+          }
+        }));
+      }
+
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
+      // Get puzzles with pagination
+      const [puzzles, total] = await Promise.all([
+        prisma.puzzle.findMany({
+          where,
+          orderBy: [
+            { play_count: "desc" },
+            { upload_date: "desc" },
+          ],
+          skip: (page - 1) * limit,
+          take: limit,
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            difficulty: true,
+            category: true,
+            tags: true,
+            play_count: true,
+            completion_rate: true,
+            estimated_solve_time: true,
+            upload_date: true,
+          },
+        }),
+        prisma.puzzle.count({ where }),
+      ]);
+
+      // Get categories for filter
+      const categories = await prisma.puzzle.findMany({
+        where: { is_active: true },
+        select: { category: true },
+        distinct: ["category"],
+      });
+
+      // Convert Decimal types to numbers
+      const normalizedPuzzles = puzzles.map(puzzle => ({
+        ...puzzle,
+        completion_rate: puzzle.completion_rate ? Number(puzzle.completion_rate) : null
       }));
-    }
 
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    // Get puzzles with pagination
-    const [puzzles, total] = await Promise.all([
-      prisma.puzzle.findMany({
-        where,
-        orderBy: [
-          { play_count: "desc" },
-          { upload_date: "desc" },
-        ],
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          difficulty: true,
-          category: true,
-          tags: true,
-          play_count: true,
-          completion_rate: true,
-          estimated_solve_time: true,
-          upload_date: true,
+      return {
+        puzzles: normalizedPuzzles,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
         },
-      }),
-      prisma.puzzle.count({ where }),
-    ]);
-
-    // Get categories for filter
-    const categories = await prisma.puzzle.findMany({
-      where: { is_active: true },
-      select: { category: true },
-      distinct: ["category"],
+        filters: {
+          categories: categories.map((c) => c.category).filter(Boolean),
+          difficulties: ["easy", "medium", "hard"],
+          tiers: [],
+        },
+      };
     });
 
-    // Convert Decimal types to numbers
-    const normalizedPuzzles = puzzles.map(puzzle => ({
-      ...puzzle,
-      completion_rate: puzzle.completion_rate ? Number(puzzle.completion_rate) : null
-    }));
-
-    return NextResponse.json({
-      puzzles: normalizedPuzzles,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-      filters: {
-        categories: categories.map((c) => c.category).filter(Boolean),
-        difficulties: ["easy", "medium", "hard"],
-        tiers: [],
+    return NextResponse.json(value, {
+      headers: {
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
       },
     });
   } catch (error) {

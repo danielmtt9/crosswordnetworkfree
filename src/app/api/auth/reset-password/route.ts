@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
   try {
@@ -21,5 +21,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Unable to reset password" }, { status: 500 });
   }
 }
-
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { parseCluesFromHTML } from '@/lib/clueCache/clueParser';
 import fs from 'fs/promises';
 import path from 'path';
+import { cacheKeyFromRequest, withTtlCache } from '@/lib/serverTtlCache';
 
-const prisma = new PrismaClient();
+const TTL_MS = 5 * 60 * 1000;
 
 function isValidCachedClues(
   clues: any,
@@ -50,112 +51,121 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await params;
-    const puzzleId = parseInt(resolvedParams.id);
+    const key = cacheKeyFromRequest(request);
+    const { value } = await withTtlCache(key, TTL_MS, async () => {
+      const resolvedParams = await params;
+      const puzzleId = parseInt(resolvedParams.id);
 
-    if (isNaN(puzzleId)) {
-      return NextResponse.json(
-        { error: 'Invalid puzzle ID' },
-        { status: 400 }
-      );
-    }
+      if (isNaN(puzzleId)) {
+        return { status: 400 as const, body: { error: 'Invalid puzzle ID' } };
+      }
 
-    // Check if puzzle exists and has cached clues
-    const puzzle = await prisma.puzzle.findUnique({
-      where: { id: puzzleId },
-    });
+      // Check if puzzle exists and has cached clues
+      const puzzle = await prisma.puzzle.findUnique({
+        where: { id: puzzleId },
+      });
 
-    if (!puzzle) {
-      return NextResponse.json(
-        { error: 'Puzzle not found' },
-        { status: 404 }
-      );
-    }
+      if (!puzzle) {
+        return { status: 404 as const, body: { error: 'Puzzle not found' } };
+      }
 
-    // Try to get clues from database first (but validate, because older cached
-    // clues may have incorrect direction splits / out-of-bounds cells).
-    if (puzzle.clues) {
-      try {
-        const clues = JSON.parse(puzzle.clues as string);
-        
-        if (!isValidCachedClues(clues, puzzle.grid_width ?? null, puzzle.grid_height ?? null)) {
-          console.warn(`[API] Cached clues failed validation for puzzle ${puzzleId}, reparsing from file`);
-          throw new Error('Cached clues invalid');
+      // Try to get clues from database first (but validate, because older cached
+      // clues may have incorrect direction splits / out-of-bounds cells).
+      if (puzzle.clues) {
+        try {
+          const clues = JSON.parse(puzzle.clues as string);
+          
+          if (!isValidCachedClues(clues, puzzle.grid_width ?? null, puzzle.grid_height ?? null)) {
+            console.warn(`[API] Cached clues failed validation for puzzle ${puzzleId}, reparsing from file`);
+            throw new Error('Cached clues invalid');
+          }
+
+          console.log(`[API] Serving clues from database for puzzle ${puzzleId}`);
+          
+          return {
+            status: 200 as const,
+            body: {
+              clues,
+              sourceInfo: {
+                source: 'cache',
+                cacheHit: true,
+                cachedAt: puzzle.updatedAt,
+              },
+            },
+          };
+        } catch (parseError) {
+          console.error('[API] Failed to parse cached clues:', parseError);
+          // Fall through to file parsing
         }
+      }
 
-        console.log(`[API] Serving clues from database for puzzle ${puzzleId}`);
+      // Fallback: Parse from HTML file
+      console.log(`[API] No cached clues found, parsing from file for puzzle ${puzzleId}`);
+      
+      try {
+        // `puzzle.file_path` may be stored as either:
+        // - "public/puzzles/..." (current upload implementation)
+        // - "puzzles/..." (legacy/alternate)
+        // Normalize to an absolute FS path.
+        const storedPath = (puzzle.file_path || '').replace(/^\/+/, '');
+        const filePath = storedPath.startsWith('public/')
+          ? path.join(process.cwd(), storedPath)
+          : path.join(process.cwd(), 'public', storedPath);
+        const htmlContent = await fs.readFile(filePath, 'utf-8');
         
-        return NextResponse.json({
-          clues,
-          sourceInfo: {
-            source: 'cache',
-            cacheHit: true,
-            cachedAt: puzzle.updatedAt,
+        const parseResult = await parseCluesFromHTML(htmlContent);
+        
+        if (!parseResult.success || !parseResult.clues) {
+          throw new Error(parseResult.error || 'Failed to parse clues');
+        }
+        
+        const parsedClues = parseResult.clues;
+        const parseTime = parseResult.parseTimeMs;
+        
+        // Cache the parsed clues in database
+        await prisma.puzzle.update({
+          where: { id: puzzleId },
+          data: {
+            clues: JSON.stringify(parsedClues),
           },
         });
-      } catch (parseError) {
-        console.error('[API] Failed to parse cached clues:', parseError);
-        // Fall through to file parsing
-      }
-    }
-
-    // Fallback: Parse from HTML file
-    console.log(`[API] No cached clues found, parsing from file for puzzle ${puzzleId}`);
-    
-    try {
-      // `puzzle.file_path` may be stored as either:
-      // - "public/puzzles/..." (current upload implementation)
-      // - "puzzles/..." (legacy/alternate)
-      // Normalize to an absolute FS path.
-      const storedPath = (puzzle.file_path || '').replace(/^\/+/, '');
-      const filePath = storedPath.startsWith('public/')
-        ? path.join(process.cwd(), storedPath)
-        : path.join(process.cwd(), 'public', storedPath);
-      const htmlContent = await fs.readFile(filePath, 'utf-8');
-      
-      const parseResult = await parseCluesFromHTML(htmlContent);
-      
-      if (!parseResult.success || !parseResult.clues) {
-        throw new Error(parseResult.error || 'Failed to parse clues');
-      }
-      
-      const parsedClues = parseResult.clues;
-      const parseTime = parseResult.parseTimeMs;
-      
-      // Cache the parsed clues in database
-      await prisma.puzzle.update({
-        where: { id: puzzleId },
-        data: {
-          clues: JSON.stringify(parsedClues),
-        },
-      });
-      
-      console.log(`[API] Parsed and cached clues for puzzle ${puzzleId} (${parseTime}ms)`);
-      
-      return NextResponse.json({
-        clues: parsedClues,
-        sourceInfo: {
-          source: 'file',
-          cacheHit: false,
-          parseTimeMs: parseTime,
-        },
-      });
-    } catch (fileError) {
-      console.error('[API] Failed to parse clues from file:', fileError);
-      
-      return NextResponse.json(
-        { 
-          error: 'Failed to load clues',
-          clues: { across: [], down: [], metadata: {} },
-          sourceInfo: {
-            source: 'error',
-            cacheHit: false,
+        
+        console.log(`[API] Parsed and cached clues for puzzle ${puzzleId} (${parseTime}ms)`);
+        
+        return {
+          status: 200 as const,
+          body: {
+            clues: parsedClues,
+            sourceInfo: {
+              source: 'file',
+              cacheHit: false,
+              parseTimeMs: parseTime,
+            },
           },
-        },
-        { status: 500 }
-      );
-    }
+        };
+      } catch (fileError) {
+        console.error('[API] Failed to parse clues from file:', fileError);
+        
+        return {
+          status: 500 as const,
+          body: {
+            error: 'Failed to load clues',
+            clues: { across: [], down: [], metadata: {} },
+            sourceInfo: {
+              source: 'error',
+              cacheHit: false,
+            },
+          },
+        };
+      }
+    });
 
+    return NextResponse.json(value.body, {
+      status: value.status,
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+      },
+    });
   } catch (error) {
     console.error('[API] Error fetching clues:', error);
     return NextResponse.json(

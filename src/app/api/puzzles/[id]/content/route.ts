@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+
+type CachedFile = {
+  mtimeMs: number;
+  size: number;
+  etag: string;
+  content: string;
+};
+
+const fileCache = new Map<string, CachedFile>();
+
+function makeEtag(size: number, mtimeMs: number) {
+  // Weak etag is fine for our static puzzle HTML.
+  return `W/\"${size}-${Math.floor(mtimeMs)}\"`;
+}
 
 export async function GET(
   request: NextRequest,
@@ -47,11 +61,34 @@ export async function GET(
       const filePath = storedPath.startsWith('public/')
         ? path.join(process.cwd(), storedPath)
         : path.join(process.cwd(), 'public', storedPath);
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const stat = await fs.stat(filePath);
+      const cached = fileCache.get(filePath);
+      let content: string;
+      let etag: string;
+
+      if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+        content = cached.content;
+        etag = cached.etag;
+      } else {
+        content = await fs.readFile(filePath, 'utf-8');
+        etag = makeEtag(stat.size, stat.mtimeMs);
+        fileCache.set(filePath, { mtimeMs: stat.mtimeMs, size: stat.size, etag, content });
+      }
       
       // Check if this is an iframe request
       const url = new URL(request.url);
       const mode = url.searchParams.get('mode');
+
+      const ifNoneMatch = request.headers.get('if-none-match');
+      if (ifNoneMatch && ifNoneMatch === etag) {
+        return new NextResponse(null, {
+          status: 304,
+          headers: {
+            ETag: etag,
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        });
+      }
       
       if (mode === 'iframe') {
         // Return raw HTML content for iframe
@@ -59,19 +96,23 @@ export async function GET(
           headers: {
             'Content-Type': 'text/html',
             'X-Frame-Options': 'SAMEORIGIN',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+            'ETag': etag,
           },
         });
       } else {
         // Return JSON response with content for regular API calls
         return NextResponse.json({
-          content: content,
+          content,
           metadata: {
             filename: puzzle.filename,
             filePath: puzzle.file_path
           }
+        }, {
+          headers: {
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+            'ETag': etag,
+          },
         });
       }
     } catch (fileError) {
