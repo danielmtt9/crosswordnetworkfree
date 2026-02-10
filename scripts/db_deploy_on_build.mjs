@@ -15,6 +15,18 @@ function run(cmd, args, opts = {}) {
   return r;
 }
 
+function runResolve(args) {
+  // Capture output so we can treat certain Prisma codes as non-fatal.
+  const r = run("npx", ["prisma", "migrate", "resolve", ...args], { stdio: "pipe" });
+  const out = `${r.stdout || ""}\n${r.stderr || ""}`.trim();
+  if (out) process.stdout.write(out + "\n");
+  // P3008: "already recorded as applied" - safe to ignore in bootstrap flow.
+  if (r.status !== 0 && out.includes("P3008")) {
+    return { status: 0 };
+  }
+  return r;
+}
+
 function listMigrationDirs() {
   const migrationsDir = path.join(process.cwd(), "prisma", "migrations");
   if (!fs.existsSync(migrationsDir)) return [];
@@ -53,7 +65,7 @@ function listMigrationDirs() {
 
 const dirs = listMigrationDirs();
 for (const dir of dirs) {
-  const r = run("npx", ["prisma", "migrate", "resolve", "--applied", dir], { stdio: "inherit" });
+  const r = runResolve(["--applied", dir]);
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
