@@ -11,6 +11,8 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+  modulePathIgnorePatterns: ['<rootDir>/.next/'],
+  watchPathIgnorePatterns: ['<rootDir>/.next/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
@@ -39,6 +41,8 @@ const customJestConfig = {
       ],
       testEnvironment: 'node',
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+      modulePathIgnorePatterns: ['<rootDir>/.next/'],
+      watchPathIgnorePatterns: ['<rootDir>/.next/'],
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
       },
@@ -70,6 +74,8 @@ const customJestConfig = {
       ],
       testEnvironment: 'jsdom',
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+      modulePathIgnorePatterns: ['<rootDir>/.next/'],
+      watchPathIgnorePatterns: ['<rootDir>/.next/'],
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
       },

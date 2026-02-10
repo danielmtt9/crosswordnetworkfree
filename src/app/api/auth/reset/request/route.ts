@@ -69,7 +69,11 @@ export async function POST(request: NextRequest) {
       });
 
       // Generate reset URL
-      const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password/${token}`;
+      const baseUrl =
+        process.env.AUTH_URL ||
+        process.env.NEXTAUTH_URL ||
+        'http://localhost:3000';
+      const resetUrl = `${baseUrl}/reset-password/${token}`;
 
       // Get email template
       const template = emailTemplateManager.getTemplate('reset-password');

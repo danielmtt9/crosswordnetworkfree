@@ -61,7 +61,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate verification URL
-    const verificationUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`;
+    const baseUrl =
+      process.env.AUTH_URL ||
+      process.env.NEXTAUTH_URL ||
+      'http://localhost:3000';
+    const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
 
     // Get email template
     const template = emailTemplateManager.getTemplate('verify-email');

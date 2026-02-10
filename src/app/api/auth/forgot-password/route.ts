@@ -12,10 +12,13 @@ export async function POST(req: Request) {
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
     await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
-    const url = new URL(`/reset-password/${token}`, process.env.NEXTAUTH_URL || "http://localhost:3000");
+    const baseUrl =
+      process.env.AUTH_URL ||
+      process.env.NEXTAUTH_URL ||
+      'http://localhost:3000';
+    const url = new URL(`/reset-password/${token}`, baseUrl);
     await sendPasswordResetEmail({ to: lower, resetUrl: url.toString() });
   }
   return NextResponse.json({ message: "If that email exists, a reset link was sent." });
 }
-
 

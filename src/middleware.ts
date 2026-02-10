@@ -15,7 +15,7 @@ export async function middleware(req: NextRequest) {
   try {
     token = await getToken({
       req,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
     });
   } catch {
     token = null;
@@ -35,4 +35,3 @@ export const config = {
   // Allow static assets through without auth so puzzle iframes can load bridge scripts.
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|scripts|puzzles).*)'],
 };
-

@@ -39,7 +39,11 @@ export async function POST(req: Request) {
     const expires = new Date(Date.now() + 1000 * 60 * 60 * 24);
     await prisma.verificationToken.create({ data: { identifier: lower, token, expires } });
 
-    const url = new URL("/api/auth/verify", process.env.NEXTAUTH_URL || "http://localhost:3000");
+    const baseUrl =
+      process.env.AUTH_URL ||
+      process.env.NEXTAUTH_URL ||
+      'http://localhost:3000';
+    const url = new URL('/api/auth/verify', baseUrl);
     url.searchParams.set("token", token);
     url.searchParams.set("email", lower);
     await sendVerificationEmail(lower, url.toString(), name || 'User');
